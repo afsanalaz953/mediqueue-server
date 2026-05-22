@@ -33,7 +33,7 @@ await client.connect();
   const db = client.db("tutorData");
    const tutorCollections = db.collection("tutorCollection");
 
- const bookingTutorCollections = db.collection("bookingTutorCollections");
+ const bookingCollections = db.collection("tutorBookingCollections");
 
 //   //  getting data from mongodatabase
  app.get('/tutors', async(req, res) => {
@@ -54,12 +54,7 @@ const result = await tutorCollections.findOne({_id: new ObjectId (id)})
 res.json(result) 
  }) 
 
- app.post ('/my-tutors', async(req, res)=> {
- const bookingData = req.body
-    const result = await tutorBookingCollections.insertOne( bookingData)
-      res.json(result)
-      console.log(bookingData)
-   })
+
 
    // database creation
 app.post ('/tutors', async(req, res)=> {
@@ -68,7 +63,27 @@ app.post ('/tutors', async(req, res)=> {
      res.json(result)
    })
 
-
+// app.patch ("/tutosr/:id", async(req,res)=>{
+// const {id}= req.params;
+// const bookingData = req.body;
+// const result = await tutorCollection.findOne({_id: new ObjectId (id)})
+// if(!result){
+//   res.status(404).json({message:"Tutor not avaiable"})
+// }
+// await tutorCollection.updateOne({_id:new ObjectId(id)},
+// {
+// $inc: {avaiableSlots:1},
+// $set:{
+//   lastBookingAt:new Data(),
+// },
+// }
+// );
+// const bookresult = await bookingTutorCollections.insertOne({
+//   ...bookingData,
+//  bookingAt:new Data() 
+// })
+// res.send( "bookresult", bookresult)
+// });
 
 
 //    // database creation
@@ -103,6 +118,14 @@ app.post ('/tutors', async(req, res)=> {
    const result = await cursor. toArray();
    res.send(result);
  })
+
+ app.post ('/my-tutors', async(req, res)=> {
+ const bookingData = req.body
+    const result = await bookingCollections.insertOne( bookingData)
+      res.json(result)
+     console.log("booking", bookingData)
+   });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
