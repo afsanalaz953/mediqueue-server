@@ -95,24 +95,7 @@ app.post ('/tutors', async(req, res)=> {
 
   //  font end the id dhore mongodb thake data ana or API create
 
-
-
-//   // for delete
-// app.delete("/places/:id", async(req, res) =>{
-//  const id = req.params.id;
-//  console.log("placeId", id);
-// //  if get id then go to mongodoc for delete query
-// // for particular id selection 
-// const query = {_id : new ObjectId(id)}
-// const result = userCollections.deleteOne(query);
-// console.log(result);
-// res.send(result)
-
-// });
- 
-
-  
-// system of load data from mongodb database
+  // system of load data from mongodb database
    app.get ('/tutors', async(req, res) =>{
    const cursor = tutorCollections.find ();
    const result = await cursor. toArray();
@@ -127,9 +110,6 @@ app.get("/booking/:userId", async(req, res)=>{
  res.json(result)
 })
 
-app.get("/booking")
-
-
  app.post ('/booking', async(req, res)=> {
 
  const bookingData = req.body
@@ -138,6 +118,18 @@ app.get("/booking")
      console.log("booking", bookingData)
    });
 
+   //   // for delete
+ app.delete("/booking/:bookingId", async(req, res) =>{
+const {bookingId} = req.params;
+//  console.log("placeId", id);
+// //  if get id then go to mongodoc for delete query
+// // for particular id selection 
+// const query = {_id : new ObjectId(id)}
+const result = bookingCollections.deleteOne({_id:new ObjectId(bookingId)});
+// console.log(result);
+res.json(result)
+
+ });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
