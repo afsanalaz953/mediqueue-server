@@ -119,7 +119,19 @@ app.post ('/tutors', async(req, res)=> {
    res.send(result);
  })
 
- app.post ('/my-tutors', async(req, res)=> {
+//  Api getting on client
+app.get("/booking/:userId", async(req, res)=>{
+    // res.send('hello server running')
+   const {userId} = req.params;
+  const result = await bookingCollections.find({userId}).toArray();
+ res.json(result)
+})
+
+app.get("/booking")
+
+
+ app.post ('/booking', async(req, res)=> {
+
  const bookingData = req.body
     const result = await bookingCollections.insertOne( bookingData)
       res.json(result)
