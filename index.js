@@ -57,19 +57,20 @@ res.json(result);
 console.log( "Alltutors", result)
 
  })
+
 // // formTutorId 
 //    //   // for delete
-//  app.delete("/my-tutors/:formTutorId ", async(req, res) =>{
-// const {formTutorId } = req.params;
-// //  console.log("placeId", id);
+app.delete("/my-tutors/:formTutorId", async(req, res) =>{
+const {formTutorId } = req.params;
+
 // // //  if get id then go to mongodoc for delete query
 // // // for particular id selection 
-// // const query = {_id : new ObjectId(id)}
-// const result = addingTutorCollections.deleteOne({_id:new ObjectId(formTutorId)});
-// // console.log(result);
-// res.json(result)
+//  const query = {_id : new ObjectId(id)}
+ const result = await addingTutorCollections.deleteOne({_id:new ObjectId(formTutorId)});
 
-//  });
+res.json(result)
+
+});
 
 
 
@@ -156,6 +157,17 @@ const result = bookingCollections.deleteOne({_id:new ObjectId(bookingId)});
 res.json(result)
 
  });
+
+ app.patch("/my-tutors/:id", async (req, res) => {
+const {id} = req.params
+const updatedData = req.body
+console.log(updatedData)
+const result = await addingTutorCollections.updateOne(
+  {_id: new ObjectId(id)},
+  {$set: updatedData}
+)
+res.json(result)
+ })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
