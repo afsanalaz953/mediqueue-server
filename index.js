@@ -34,6 +34,7 @@ await client.connect();
 
   const db = client.db("tutorData");
    const tutorCollections = db.collection("tutorCollection");
+   const tutorSlotCollections = db.collection("slotCollections");
    
    const addingTutorCollections = db.collection("addingTutorCollection");
  const bookingCollections = db.collection("tutorBookingCollections");
@@ -85,49 +86,29 @@ const result = await tutorCollections.findOne({_id: new ObjectId (id)})
 res.json(result) 
  }) 
 
-
-
    // 1) for formtutor data sending :database creation and send to mongo
-
-
-// app.patch ("/tutosr/:id", async(req,res)=>{
-// const {id}= req.params;
-// const bookingData = req.body;
-// const result = await tutorCollection.findOne({_id: new ObjectId (id)})
-// if(!result){
-//   res.status(404).json({message:"Tutor not avaiable"})
-// }
-// await tutorCollection.updateOne({_id:new ObjectId(id)},
-// {
-// $inc: {avaiableSlots:1},
-// $set:{
-//   lastBookingAt:new Data(),
-// },
-// }
-// );
-// const bookresult = await bookingTutorCollections.insertOne({
-//   ...bookingData,
-//  bookingAt:new Data() 
-// })
-// res.send( "bookresult", bookresult)
-// });
-
-
 //    // database creation
-//    app.post ('/tutors', async(req, res)=> {
+//   app.post ('/tutors', async(req, res)=> {
 //      const tutorData = req.body
 //      const result = await tutorCollections.insertOne(tutorData)
 //      res.json(result)
 //    })
-
   //  font end the id dhore mongodb thake data ana or API create
 
-  // system of load data from mongodb database
-   app.get ('/tutors', async(req, res) =>{
-   const cursor = tutorCollections.find ();
-   const result = await cursor. toArray();
+  // search system 
+app.get ('/tutors', async(req, res) =>{
+      const {search} = req.query;
+let cursor;
+if(search){
+  cursor = tutorCollections.find({tutorName:{$regex:search, $options:'i'}
+  });  
+}else{
+    cursor = tutorCollections.find ();
+}
+ const result = await cursor. toArray();
    res.send(result);
- })
+ });
+
 
 //  Api getting on client
 app.get("/booking/:userId", async(req, res)=>{
@@ -137,13 +118,101 @@ app.get("/booking/:userId", async(req, res)=>{
  res.json(result)
 })
 
- app.post ('/booking', async(req, res)=> {
 
- const bookingData = req.body
-    const result = await bookingCollections.insertOne( bookingData)
-      res.json(result)
-     console.log("booking", bookingData)
-   });
+// -----updateslot start-----
+app.post('/booking', async (req, res) => {
+  const bookingData = req.body;
+  const { tutorId, userId } = bookingData;
+
+  // Validate required fields
+  if (!tutorId || !userId) {
+    return res.status(400).json({ message: 'Missing tutorId or userId' });
+  }
+
+  try {
+    // 1. Fetch the tutor from tutorCollections
+    const tutor = await tutorCollections.findOne({ _id: new ObjectId(tutorId) });
+    if (!tutor) {
+      return res.status(404).json({ message: 'Tutor not found' });
+    }
+
+    // 2. Check available slots (field name: availableSlots)
+    if (tutor.availableSlots === undefined) {
+      return res.status(500).json({ message: 'Tutor record missing availableSlots field' });
+    }
+    if (tutor.availableSlots <= 0) {
+      return res.status(400).json({ message: 'No available slots left. You cannot book this session.' });
+    }
+
+    // 3. Check session start date restriction
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // compare only date part
+    const sessionStart = new Date(tutor.sessionStartDate);
+    sessionStart.setHours(0, 0, 0, 0);
+
+    if (today < sessionStart) {
+      return res.status(400).json({ message: `Booking is not available yet for this tutor. Sessions start on ${tutor.sessionStartDate}.` });
+    }
+
+    // 4. All checks passed – insert the booking
+    const bookingResult = await bookingCollections.insertOne({
+      ...bookingData,
+      bookingCreatedAt: new Date(),
+    });
+
+    // 5. Atomically decrease availableSlots by 1
+    await tutorCollections.updateOne(
+      { _id: new ObjectId(tutorId) },
+      { $inc: { availableSlots: -1 } }
+    );
+
+    // 6. (Optional) Get updated tutor data to return new slot count
+    const updatedTutor = await tutorCollections.findOne({ _id: new ObjectId(tutorId) });
+
+    res.status(201).json({
+      message: 'Booking successful',
+      bookingId: bookingResult.insertedId,
+      remainingSlots: updatedTutor.availableSlots,
+    });
+
+  } catch (error) {
+    console.error('Booking error:', error);
+    res.status(500).json({ message: 'Internal server error. Please try again.' });
+  }
+});
+
+
+
+
+
+
+//  app.post ('/booking', async(req, res)=> {
+
+//  const bookingData = req.body
+//     const result = await bookingCollections.insertOne( bookingData)
+//       res.json(result)
+//      console.log("booking", bookingData)
+//    });
+
+//   //  for slot update
+//  app.patch("/tutors/:id", async (req, res) => {
+// const {id} = req.params;
+// const updatedSlot = req.body;
+// const slotResult = await tutorCollections.findOne(
+//   {_id: new ObjectId(id)})
+
+// await tutorCollections.updateOne(
+//   {_id: new ObjectId(id)},
+//   {$inc: {slotCount:-1}}
+// )
+// const result = await slotCollections.insertOne({
+//   ...slotData
+// })
+// res.send(result)
+//  })
+
+// ------------slotupdate-end------
+
 
    //   // for delete
  app.delete("/booking/:bookingId", async(req, res) =>{
