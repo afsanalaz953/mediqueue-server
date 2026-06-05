@@ -96,18 +96,89 @@ res.json(result)
   //  font end the id dhore mongodb thake data ana or API create
 
   // search system 
-app.get ('/tutors', async(req, res) =>{
-      const {search} = req.query;
-let cursor;
-if(search){
-  cursor = tutorCollections.find({tutorName:{$regex:search, $options:'i'}
-  });  
-}else{
-    cursor = tutorCollections.find ();
-}
- const result = await cursor. toArray();
-   res.send(result);
- });
+app.get('/tutors', async (req, res) => {
+  try {
+    const { search, startDate, endDate } = req.query;
+    let query = {};   // ← বেস কোয়েরি অবজেক্ট
+
+    // নাম অনুযায়ী সার্চ
+    if (search) {
+      query.tutorName = { $regex: search, $options: 'i' };
+    }
+
+    // তারিখ রেঞ্জ ফিল্টার (sessionStartDate)
+   if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : null;
+      const end = endDate ? new Date(endDate) : null;
+      if (end) end.setUTCHours(23, 59, 59, 999);
+
+      query.$expr = {
+        $and: []
+      };
+      
+      // $toDate দিয়ে স্ট্রিংকে Date এ কনভার্ট করে তুলনা
+      if (start) {
+        query.$expr.$and.push({ $gte: [{ $toDate: "$sessionStartDate" }, start] });
+      }
+      if (end) {
+        query.$expr.$and.push({ $lte: [{ $toDate: "$sessionStartDate" }, end] });
+      }
+    }
+
+
+
+  //   if (startDate || endDate) {
+  //      query.sessionStartDate = {};
+  //    if (startDate) {
+  //        query.sessionStartDate.$gte = new Date(startDate);
+  //     }
+  //    if (endDate) {
+  //      const end = new Date(endDate);
+  //       end.setUTCHours(23, 59, 59, 999);
+  //        query.sessionStartDate.$lte = end;
+  //    }
+  //  }
+
+
+
+    // কোয়েরি এক্সিকিউট
+    const result = await tutorCollections.find(query).toArray();
+    res.json(result);   // সব সময় JSON রিটার্ন করবে
+  } catch (error) {
+    console.error('Error in /tutors:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+
+// app.get ('/tutors', async(req, res) =>{
+//       const {search, startDate, endDate } = req.query;
+// let cursor;
+// if(search){
+//   cursor = tutorCollections.find({tutorName:{$regex:search, $options:'i'}
+//   });  
+// }
+// // for date search querry
+// if (startDate || endDate) {
+//     query.sessionStartDate = {};  
+//     if (startDate) {
+//       query.sessionStartDate.$gte = new Date(startDate);
+//     }
+
+//      if (endDate) {
+//       const end = new Date(endDate);
+//       end.setUTCHours(23, 59, 59, 999);
+//       query.sessionStartDate.$lte = end;
+//     }
+//   }
+
+// // else{
+// //     cursor = tutorCollections.find ();
+// // }
+//  const result = await cursor. toArray();
+//    res.send(result);
+//  });
 
 
 //  Api getting on client
@@ -214,14 +285,17 @@ app.post('/booking', async (req, res) => {
 // ------------slotupdate-end------
 
 
-   //   // for delete
- app.delete("/booking/:bookingId", async(req, res) =>{
+   //   // for update bookingdelete
+ app.patch("/booking/:bookingId", async(req, res) =>{
 const {bookingId} = req.params;
 //  console.log("placeId", id);
 // //  if get id then go to mongodoc for delete query
 // // for particular id selection 
 // const query = {_id : new ObjectId(id)}
-const result = bookingCollections.deleteOne({_id:new ObjectId(bookingId)});
+const result = await bookingCollections.updateOne(
+  {_id:new ObjectId(bookingId)},
+{ $set: { tutorStatus: "cancelled"}}
+)
 // console.log(result);
 res.json(result)
 
