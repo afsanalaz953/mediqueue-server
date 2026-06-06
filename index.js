@@ -8,16 +8,16 @@ const app = express()
 const cors = require('cors');
 const dotenv = require('dotenv')
 const { MongoClient, ServerApiVersion,  ObjectId } = require('mongodb');
+ const { createRemoteJWKSet } = require('jose-cjs');
+const { jwtVerify } = require('jose-cjs');
+
 dotenv.config()
 const port =  process.env.PORT ||5000;
 
 app.use (cors());
 app.use (express.json());
 
-
 const uri = process.env.MONGO_URI;
-
-
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -26,6 +26,39 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+// verification by JWKS
+ const JWKS = createRemoteJWKSet(
+      new URL('http://localhost:3000/api/auth/jwks')
+    )
+
+// verify Token
+const verifyToken = async(req, res, next) =>{
+  const authHeader= req?.headers.authorization
+   if(!authHeader){
+   return res.status(401).json({message:
+    "Unauthorized"
+    });
+  }
+   console.log (authHeader)
+const token = authHeader.split(" ")[1];
+  
+if(!token){
+    return res.status(401).json({message:
+      "Unauthorized"
+   });
+ }
+// payload in try catch
+try {
+const { payload } = await jwtVerify(token, JWKS) 
+  console.log(payload, "payload");
+    next()
+ } catch (error) {
+    return res.status(403).json({message:
+     "Forbidden"
+     });
+ }
+};
+// verification finish
 
 const run = async() =>{
   try {
@@ -35,28 +68,23 @@ await client.connect();
   const db = client.db("tutorData");
    const tutorCollections = db.collection("tutorCollection");
    const tutorSlotCollections = db.collection("slotCollections");
-   
    const addingTutorCollections = db.collection("addingTutorCollection");
- const bookingCollections = db.collection("tutorBookingCollections");
+   const bookingCollections = db.collection("tutorBookingCollections");
 
-
-app.post ('/add-tutor', async(req, res)=>{
- 
-    const formTutorData = req.body
+// for getting add-tutorpage's formtutor data from client
+app.post ('/add-tutor', verifyToken, async(req, res)=>{
+  const formTutorData = req.body
   console.log("form", formTutorData)
      const result = await addingTutorCollections.insertOne(formTutorData)
      res.json(result)
  
    })
 
-
-
 //   //  getting data from mongodatabase for my-tutors page by clicking form
- app.get('/my-tutors', async(req, res) => {
+ app.get('/my-tutors', verifyToken, async(req, res) => {
 const result= await addingTutorCollections.find().toArray()
 res.json(result);
 console.log( "Alltutors", result)
-
  })
 
 // // formTutorId 
@@ -73,18 +101,18 @@ res.json(result)
 
 });
 
-
-
- app.get('/featured', async(req, res) =>{
+// feature tutor data for homepage
+app.get('/featured', async(req, res) =>{
 const result = await tutorCollections.find().limit(6).toArray()
 res.json(result);
  })
 
- app.get('/tutors/:id', async (req, res) =>{
+// Tutor detailspage
+ app.get('/tutors/:id', verifyToken, async (req, res) =>{
 const {id} = req.params
-const result = await tutorCollections.findOne({_id: new ObjectId (id)})
+const result = await tutorCollections.findOne({_id: new ObjectId(id)})
 res.json(result) 
- }) 
+ }); 
 
    // 1) for formtutor data sending :database creation and send to mongo
 //    // database creation
@@ -182,7 +210,7 @@ app.get('/tutors', async (req, res) => {
 
 
 //  Api getting on client
-app.get("/booking/:userId", async(req, res)=>{
+app.get("/booking/:userId", verifyToken, async(req, res)=>{
     // res.send('hello server running')
    const {userId} = req.params;
   const result = await bookingCollections.find({userId}).toArray();
