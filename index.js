@@ -13,8 +13,25 @@ const { jwtVerify } = require('jose-cjs');
 
 dotenv.config()
 const port =  process.env.PORT ||5000;
+// for vercel cors
+const allowedOrigins = [
+  'https://express-assi-client.vercel.app', // আপনার ফ্রন্টএন্ড
+  'http://localhost:3000'
+];
 
-app.use (cors());
+// app.use (cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+}));
+
+
 app.use (express.json());
 
 const uri = process.env.MONGO_URI;
@@ -28,7 +45,7 @@ const client = new MongoClient(uri, {
 });
 // verification by JWKS
  const JWKS = createRemoteJWKSet(
-      new URL('http://localhost:3000/api/auth/jwks')
+      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
     )
 
 // verify Token
@@ -63,7 +80,7 @@ const { payload } = await jwtVerify(token, JWKS)
 const run = async() =>{
   try {
    // Connect the client to the server	(optional starting in v4.7)
-await client.connect();
+// await client.connect();
 
   const db = client.db("tutorData");
    const tutorCollections = db.collection("tutorCollection");
@@ -81,11 +98,13 @@ app.post ('/add-tutor', verifyToken, async(req, res)=>{
    })
 
 //   //  getting data from mongodatabase for my-tutors page by clicking form
- app.get('/my-tutors', verifyToken, async(req, res) => {
+ app.get('/my-tutors',  async(req, res) => {
 const result= await addingTutorCollections.find().toArray()
 res.json(result);
 console.log( "Alltutors", result)
  })
+
+//  verifyToken,
 
 // // formTutorId 
 //    //   // for delete
@@ -209,7 +228,7 @@ app.get('/tutors', async (req, res) => {
 //  });
 
 
-//  Api getting on client
+//  Api getting on client my-sessionpage
 app.get("/booking/:userId", verifyToken, async(req, res)=>{
     // res.send('hello server running')
    const {userId} = req.params;
@@ -280,40 +299,10 @@ app.post('/booking', async (req, res) => {
   }
 });
 
-
-
-
-
-
-//  app.post ('/booking', async(req, res)=> {
-
-//  const bookingData = req.body
-//     const result = await bookingCollections.insertOne( bookingData)
-//       res.json(result)
-//      console.log("booking", bookingData)
-//    });
-
-//   //  for slot update
-//  app.patch("/tutors/:id", async (req, res) => {
-// const {id} = req.params;
-// const updatedSlot = req.body;
-// const slotResult = await tutorCollections.findOne(
-//   {_id: new ObjectId(id)})
-
-// await tutorCollections.updateOne(
-//   {_id: new ObjectId(id)},
-//   {$inc: {slotCount:-1}}
-// )
-// const result = await slotCollections.insertOne({
-//   ...slotData
-// })
-// res.send(result)
-//  })
-
 // ------------slotupdate-end------
 
 
-   //   // for update bookingdelete
+   //   // for update bookingdelete 
  app.patch("/booking/:bookingId", async(req, res) =>{
 const {bookingId} = req.params;
 //  console.log("placeId", id);
@@ -341,7 +330,7 @@ res.json(result)
  })
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
