@@ -45,36 +45,39 @@ const client = new MongoClient(uri, {
 });
 // verification by JWKS
  const JWKS = createRemoteJWKSet(
-      new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+      // new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+      new URL("http://localhost:3000/api/auth/jwks")
     )
 
 // verify Token
-const verifyToken = async(req, res, next) =>{
+ const verifyToken = async(req, res, next) =>{
   const authHeader= req?.headers.authorization
-   if(!authHeader){
-   return res.status(401).json({message:
+  
+    if(!authHeader){
+    return res.status(401).json({message:
     "Unauthorized"
     });
   }
-   console.log (authHeader)
-const token = authHeader.split(" ")[1];
-  
-if(!token){
+   console.log (authHeader, "auth")
+ const token = authHeader.split(" ")[1];
+  console.log(token)
+ if(!token){
     return res.status(401).json({message:
-      "Unauthorized"
-   });
+       "Unauthorized"
+    });
  }
-// payload in try catch
-try {
-const { payload } = await jwtVerify(token, JWKS) 
-  console.log(payload, "payload");
-    next()
- } catch (error) {
-    return res.status(403).json({message:
-     "Forbidden"
-     });
- }
-};
+// // payload in try catch
+ try {
+ const { payload } = await jwtVerify(token, JWKS) 
+   console.log(payload, "payload");
+     next()
+  } catch (error) {
+     console.log(error);
+     return res.status(403).json({message:
+      "Forbidden"
+      });
+  }
+ };
 // verification finish
 
 const run = async() =>{
@@ -92,17 +95,28 @@ const run = async() =>{
 app.post ('/add-tutor', verifyToken, async(req, res)=>{
   const formTutorData = req.body
   console.log("form", formTutorData)
+  // console.log("reqbodey", req.body)
      const result = await addingTutorCollections.insertOne(formTutorData)
      res.json(result)
  
    })
 
 //   //  getting data from mongodatabase for my-tutors page by clicking form
- app.get('/my-tutors',  async(req, res) => {
-const result= await addingTutorCollections.find().toArray()
+ app.get('/my-tutors/:userId', verifyToken, async(req, res) => {
+   const {userId} = req.params;
+   console.log(userId,"userId with params")
+const result= await addingTutorCollections.find({userId}).toArray()
 res.json(result);
-console.log( "Alltutors", result)
+console.log( "Alltutors in server", result)
  })
+// //  Api getting on client my-sessionpage
+// app.get("/booking/:userId", verifyToken, async(req, res)=>{
+//     // res.send('hello server running')
+//    const {userId} = req.params;
+//   const result = await bookingCollections.find({userId}).toArray();
+//  res.json(result)
+// })
+
 
 //  verifyToken,
 
