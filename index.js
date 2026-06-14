@@ -87,25 +87,26 @@ const run = async() =>{
 
   const db = client.db("tutorData");
    const tutorCollections = db.collection("tutorCollection");
-   const tutorSlotCollections = db.collection("slotCollections");
-   const addingTutorCollections = db.collection("addingTutorCollection");
+  //  const tutorSlotCollections = db.collection("slotCollections");
+  //  const addingTutorCollections = db.collection("addingTutorCollection");
    const bookingCollections = db.collection("tutorBookingCollections");
 
 // for getting add-tutorpage's formtutor data from client
-app.post ('/add-tutor', verifyToken, async(req, res)=>{
-  const formTutorData = req.body
-  console.log("form", formTutorData)
-  // console.log("reqbodey", req.body)
-     const result = await addingTutorCollections.insertOne(formTutorData)
-     res.json(result)
+// new comend korlam
+// app.post ('/add-tutor', verifyToken, async(req, res)=>{
+//   const formTutorData = req.body
+//   console.log("form", formTutorData)
+//   // console.log("reqbodey", req.body)
+//      const result = await addingTutorCollections.insertOne(formTutorData)
+//      res.json(result)
  
-   })
+//    })
 
 //   //  getting data from mongodatabase for my-tutors page by clicking form
  app.get('/my-tutors/:userId', verifyToken, async(req, res) => {
    const {userId} = req.params;
    console.log(userId,"userId with params")
-const result= await addingTutorCollections.find({userId}).toArray()
+const result= await tutorCollections.find({userId}).toArray()
 res.json(result);
 console.log( "Alltutors in server", result)
  })
@@ -128,7 +129,7 @@ const {formTutorId } = req.params;
 // // //  if get id then go to mongodoc for delete query
 // // // for particular id selection 
 //  const query = {_id : new ObjectId(id)}
- const result = await addingTutorCollections.deleteOne({_id:new ObjectId(formTutorId)});
+ const result = await tutorCollections.deleteOne({_id:new ObjectId(formTutorId)});
 
 res.json(result)
 
@@ -155,9 +156,24 @@ res.json(result)
 //      res.json(result)
 //    })
   //  font end the id dhore mongodb thake data ana or API create
+// 2)tutor page a data dekhano
+// comend for getting search because its duplicate
+//   app.get('/tutors', async(req,res) =>{
+// const result = await tutorCollections.find().toArray();
+//   res.json(result)
+// });
 
-  // search system 
+//1)for getting alltutors from form
+app.post('/tutors', async(req,res) =>{
+  const tutorsData = req.body
+  const result = await tutorCollections .insertOne(tutorsData)
+  res.json(result)
+})
+
+// // search is not working
+//   // search system of alltutorpage
 app.get('/tutors', async (req, res) => {
+  console.log("🔍 Full query params:", req.query);
   try {
     const { search, startDate, endDate } = req.query;
     let query = {};   // ← বেস কোয়েরি অবজেক্ট
@@ -165,53 +181,88 @@ app.get('/tutors', async (req, res) => {
     // নাম অনুযায়ী সার্চ
     if (search) {
       query.tutorName = { $regex: search, $options: 'i' };
-    }
+     console.log("📝 Search query:", query);
+  }
 
     // তারিখ রেঞ্জ ফিল্টার (sessionStartDate)
    if (startDate || endDate) {
-      const start = startDate ? new Date(startDate) : null;
+     const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
       if (end) end.setUTCHours(23, 59, 59, 999);
 
-      query.$expr = {
+    query.$expr = {
         $and: []
-      };
+     };
       
-      // $toDate দিয়ে স্ট্রিংকে Date এ কনভার্ট করে তুলনা
-      if (start) {
-        query.$expr.$and.push({ $gte: [{ $toDate: "$sessionStartDate" }, start] });
-      }
+       // $toDate দিয়ে স্ট্রিংকে Date এ কনভার্ট করে তুলনা
+       if (start) {
+       query.$expr.$and.push({ $gte: [{ $toDate: "$sessionStartDate" }, start] });
+       }
       if (end) {
-        query.$expr.$and.push({ $lte: [{ $toDate: "$sessionStartDate" }, end] });
-      }
-    }
+         query.$expr.$and.push({ $lte: [{ $toDate: "$sessionStartDate" }, end] });
+       }
+     }
 
 
 
-  //   if (startDate || endDate) {
-  //      query.sessionStartDate = {};
-  //    if (startDate) {
-  //        query.sessionStartDate.$gte = new Date(startDate);
-  //     }
-  //    if (endDate) {
-  //      const end = new Date(endDate);
-  //       end.setUTCHours(23, 59, 59, 999);
-  //        query.sessionStartDate.$lte = end;
-  //    }
-  //  }
+//   //   if (startDate || endDate) {
+//   //      query.sessionStartDate = {};
+//   //    if (startDate) {
+//   //        query.sessionStartDate.$gte = new Date(startDate);
+//   //     }
+//   //    if (endDate) {
+//   //      const end = new Date(endDate);
+//   //       end.setUTCHours(23, 59, 59, 999);
+//   //        query.sessionStartDate.$lte = end;
+//   //    }
+//   //  }
+
+
 
 
 
     // কোয়েরি এক্সিকিউট
     const result = await tutorCollections.find(query).toArray();
-    res.json(result);   // সব সময় JSON রিটার্ন করবে
+    console.log("✅ Found:", result.length, "tutors");
+   res.json(result);   // সব সময় JSON রিটার্ন করবে
   } catch (error) {
-    console.error('Error in /tutors:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+   console.error('Error in /tutors:', error);
+     res.status(500).json({ error: 'Internal server error' });
+   }
 });
-
-
+// // search is not working
+// search new code
+// app.get('/tutors', async (req, res) => {
+//   console.log("=== /tutors রাউট হিট হয়েছে ===");
+//   console.log("পুরো req.query:", req.query);
+  
+//   const { search, startDate, endDate } = req.query;
+//   let query = {};
+  
+//   // সার্চ ফিল্টার (টিউটরের নাম)
+//   if (search && search.trim() !== "") {
+//     query.tutorName = { $regex: search.trim(), $options: 'i' };
+//     console.log("সার্চ ফিল্টার যোগ হয়েছে:", query);
+//   } else {
+//     console.log("কোনো সার্চ প্যারামিটার নেই, সব ডাটা আসবে");
+//   }
+  
+//   // (ঐচ্ছিক) ডেট রেঞ্জ ফিল্টার – আপাতত কমেন্ট করে রাখুন
+//   /*
+//   if ((startDate && startDate.trim()) || (endDate && endDate.trim())) {
+//     // ... ডেট ফিল্টার লজিক
+//   }
+//   */
+  
+//   try {
+//     const result = await tutorCollections.find(query).toArray();
+//     console.log(`ফাউন্ড ${result.length} টি টিউটর`);
+//     res.json(result);
+//   } catch (err) {
+//     console.error("মঙ্গোডিবি এরর:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 
 // app.get ('/tutors', async(req, res) =>{
 //       const {search, startDate, endDate } = req.query;
@@ -295,7 +346,11 @@ app.post('/booking', async (req, res) => {
     // 5. Atomically decrease availableSlots by 1
     await tutorCollections.updateOne(
       { _id: new ObjectId(tutorId) },
-      { $inc: { availableSlots: -1 } }
+      // { $inc: { availableSlots: -1 } }
+      [
+    { $set: { availableSlots: { $toInt: "$availableSlots" } } },  // string → number
+    { $set: { availableSlots: { $subtract: ["$availableSlots", 1] } } } // ১ কমানো
+  ]
     );
 
     // 6. (Optional) Get updated tutor data to return new slot count
@@ -309,7 +364,7 @@ app.post('/booking', async (req, res) => {
 
   } catch (error) {
     console.error('Booking error:', error);
-    res.status(500).json({ message: 'Internal server error. Please try again.' });
+    res.status(500).json({ message: 'Session server Error!' });
   }
 });
 
@@ -336,7 +391,7 @@ res.json(result)
 const {id} = req.params
 const updatedData = req.body
 console.log(updatedData)
-const result = await addingTutorCollections.updateOne(
+const result = await tutorCollections.updateOne(
   {_id: new ObjectId(id)},
   {$set: updatedData}
 )
