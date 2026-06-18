@@ -8,33 +8,51 @@ const app = express()
 const cors = require('cors');
 const dotenv = require('dotenv')
 const { MongoClient, ServerApiVersion,  ObjectId } = require('mongodb');
- const { createRemoteJWKSet } = require('jose-cjs');
+ const { createRemoteJWKSet,  createLocalJWKSet } = require('jose-cjs');
 const { jwtVerify } = require('jose-cjs');
 
-dotenv.config()
+// import { createLocalJWKSet } from 'jose';
+
+
+dotenv.config();
+// from wanderlast
 const port =  process.env.PORT ||5000;
-// for vercel cors
-const allowedOrigins = [
-  'https://express-assi-client.vercel.app', // আপনার ফ্রন্টএন্ড
-  'http://localhost:3000'
-];
-
-// app.use (cors());
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
-    }
-  },
-  credentials: true,
-}));
 
 
+app.use (cors());
 app.use (express.json());
 
 const uri = process.env.MONGO_URI;
+// from wanderlast
+
+
+// // const uri =  process.env.MONGO_URI;
+// const port =  process.env.PORT ||5000;
+// // const app = express();
+// const PORT = process.env.PORT;
+
+//  // for vercel cors
+// // const allowedOrigins = [
+// //    'https://tutorhunt-client.vercel.app', // আপনার ফ্রন্টএন্ড
+// //   'http://localhost:3000'
+// // ];
+
+// //  app.use (cors());
+// app.use(cors({
+//  origin: function (origin, callback) {
+//     if (!origin || allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//    } else {
+//        callback(new Error('CORS not allowed'));
+//     }
+//   },
+//    credentials: true,
+//  }));
+
+
+// app.use (express.json());
+
+//  const uri = process.env.MONGO_URI;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -44,10 +62,17 @@ const client = new MongoClient(uri, {
   }
 });
 // verification by JWKS
- const JWKS = createRemoteJWKSet(
-      // new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
-      new URL("http://localhost:3000/api/auth/jwks")
-    )
+const JWKS = createRemoteJWKSet(
+ new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+  )
+// const getJWKS = async () => {
+//   // Better Auth নিজের ভেতর থেকেই JWKS ডেটা বের করে দেয় (কোনো নেটওয়ার্ক কল নেই)
+//   const jwksData = await auth.api.getJWKS(); 
+//   return createLocalJWKSet(jwksData);
+// };
+
+
+
 
 // verify Token
  const verifyToken = async(req, res, next) =>{
@@ -68,6 +93,8 @@ const client = new MongoClient(uri, {
  }
 // // payload in try catch
  try {
+  
+    // const JWKS = await getJWKS();   // <---- এই লাইনটি বসবে
  const { payload } = await jwtVerify(token, JWKS) 
    console.log(payload, "payload");
      next()
@@ -82,7 +109,7 @@ const client = new MongoClient(uri, {
 
 const run = async() =>{
   try {
-   // Connect the client to the server	(optional starting in v4.7)
+   // Connect the  to the server	(optional starting in v4.7)
 // await client.connect();
 
   const db = client.db("tutorData");
@@ -106,9 +133,10 @@ const run = async() =>{
  app.get('/my-tutors/:userId', verifyToken, async(req, res) => {
    const {userId} = req.params;
    console.log(userId,"userId with params")
+
 const result= await tutorCollections.find({userId}).toArray()
 res.json(result);
-console.log( "Alltutors in server", result)
+// console.log( "Allmytutors in server", result)
  })
 // //  Api getting on client my-sessionpage
 // app.get("/booking/:userId", verifyToken, async(req, res)=>{
@@ -303,7 +331,7 @@ app.get("/booking/:userId", verifyToken, async(req, res)=>{
 
 
 // -----updateslot start-----
-app.post('/booking', async (req, res) => {
+app.post('/booking',  async (req, res) => {
   const bookingData = req.body;
   const { tutorId, userId } = bookingData;
 
@@ -346,11 +374,11 @@ app.post('/booking', async (req, res) => {
     // 5. Atomically decrease availableSlots by 1
     await tutorCollections.updateOne(
       { _id: new ObjectId(tutorId) },
-      // { $inc: { availableSlots: -1 } }
-      [
-    { $set: { availableSlots: { $toInt: "$availableSlots" } } },  // string → number
-    { $set: { availableSlots: { $subtract: ["$availableSlots", 1] } } } // ১ কমানো
-  ]
+       { $inc: { availableSlots: -1 } }
+  //     [
+  //   { $set: { availableSlots: { $toInt: "$availableSlots" } } },  // string → number
+  //   { $set: { availableSlots: { $subtract: ["$availableSlots", 1] } } } // ১ কমানো
+  // ]
     );
 
     // 6. (Optional) Get updated tutor data to return new slot count
